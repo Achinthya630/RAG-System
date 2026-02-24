@@ -1,0 +1,90 @@
+RAG: Retrieval Augmented Generation
+
+Combining LLMs with a retrieval system
+This retrieval system can search through vast sources of external information whenever the LLM needs additional knowledge to give better answers.
+Also make sure LLM isn't overloaded
+
+	- Retrieve relevant information from your data
+	- Give that information to the LLM
+	- Generate an answer grounded in that data
+
+Steps:
+	- Indexing
+	- Retrieval 
+	- Generation
+
+It is unrealistic to dump the entire data as LLM have a "context window" - the information it can process at a given time is limited. 
+Instead of dumping the entire information onto the LLM and asking it a question, the retrieval system helps retrieve the most relevant information from documents and use it to answer.
+
+
+2 System:
+
+		
+
+	- Ingestion Pipeline
+	
+		○ The source documents is the PDFS, documents etc. containing all the information that we want to feed into the LLM - they contain an overall of 10M tokens. 
+		○ This source is broken/divided into multiple CHUNKS - where each chunk could contain around 1K tokens - this gives 10,000 chunks
+		○ We then pass these chunks through an EMBEDDING MODEL. This model converts English words into associated vector representation (mathematical representation)
+	
+	Vector Embeddings: Mathematical representation of words. This is the computers way of making sense of a word.
+		CAT = [34,8,7.5] -> these numbers might represent some feature that describes that word.
+		Each number in a vector embedding -> dimension
+		Words with similar semantic meaning tend to have dimensions that are closer to each other. 
+		
+		In reality, popular embedding models like OpenAI Text Embedding Large 3 use 3072 dimensions
+			§ Advantage: allows capturing of more semantic information 
+			§ Disadvantage: more expensive to embed and store
+		
+		OpenAI:
+			- Text-embedding-3-small: max 1536 dimensions
+			- Text-embedding-3-large: max 3072 dimensions
+			
+	Vector Database: a database built to store all the vector embeddings 
+		○ Specialized vector DB: Pinecone, Weaviate, ChromaDB, FAISS
+		○ Regular SQL Database: offers structured data storage and retrieval
+	
+	- Retrieval Pipeline
+
+		○ The user query is converted into a similar vector embedding, searches the vector DB for a close vector
+		○ This retrieves the top K chunks that are closely related to the query
+		
+The documents and user queries must be using the same embedding model
+
+
+COSINE SIMILIRITY
+
+Measures the angle between vectors
+Ranges from 0 - 1: 0 is least similar, 1 being the most similar
+
+Formula
+	Cosine_similarity = (A . B) / (||A|| * ||B||)
+
+The magnitude values are always going to be 1 - bcoz all vectors are normalized
+	- So the denominator is always going to be 1
+		○ SO COSINE SIMILARITY = A DOT B
+
+
+RAG Chunking Strategies
+
+Ingestion Pipeline:
+	- CharacterTextSplitter: 
+		○ just cuts text at fixed character counts
+		○ Context gets lost
+		○ Not very good chunking
+	- RecursiveCharacterTextSplitter
+		○ Tries to split at natural boundaries (at paragraphs, sentences etc)
+		○ Falls back gracefully is the chunk is too big
+		○ Preserves more context than basic splitting
+	- Document-specific splitting : respects document structure
+		○ PDF: Splits by pages, sections, headers
+		○ MD: splits by headers, code blocks, lists
+		○ Each doc gets its appropriate treatment
+	- Semantic Splitting (content aware splitting)
+		○ Uses embeddings to detect topic shifts
+		○ Keeps related concepts together
+		○ Splits when meaning changes, not just by size
+		○ Computationally expensive
+	- Agentic Splitting (AI Powered Splitting)
+		○ LLM analyzes content and decides the splitting
+Most expensive
